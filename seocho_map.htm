@@ -1,0 +1,102 @@
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, user-scalable=no">
+    <title>서초 사랑 상품권 사용처</title>
+  </head>
+  <body>
+    <h1>서초 사랑 상품권 사용처</h1>
+    <script type="text/javascript" src="//dapi.kakao.com/v2/maps/sdk.js?appkey=06709e4873f5ed498823760c8b6c1e9d&libraries=services"></script>
+    <div id="map" style="width:100%;height:30vh;"></div>
+    <div id="loading">로딩 중..</div>
+    <div id="list"></div>
+    <style>#list > div { margin-bottom:7px; }</style>
+    <script>
+      var container = document.getElementById('map'); //지도를 담을 영역의 DOM 레퍼런스
+      var options = { //지도를 생성할 때 필요한 기본 옵션
+      	center: new kakao.maps.LatLng(37.493076969886154,  127.02272891548128), //지도의 중심좌표.
+      	level: 2 //지도의 레벨(확대, 축소 정도)
+      };
+
+      var map = new kakao.maps.Map(container, options); //지도 생성 및 객체 리턴
+      if( navigator.geolocation ) {
+        navigator.geolocation.getCurrentPosition(function(position) {
+          map.panTo(new kakao.maps.LatLng(position.coords.latitude, position.coords.longitude))
+        })
+      }
+      // map.setZoomable(false)
+      var list = []
+      var _updateTimer = null
+      var listDom = document.getElementById('list')
+      function updateList() {
+        if (_updateTimer) clearTimeout(_updateTimer)
+        _updateTimer = setTimeout(() => {
+          var bounds = map.getBounds();
+          console.log(list.length);
+          listDom.innerHTML = ''
+          var listHtml = []
+          list.forEach(row => {
+            if (!row.marker) {
+              return
+            }
+            if (bounds.la <= row.y && row.y <= bounds.ka && bounds.ea <= row.x && row.x <= bounds.ja) {
+              row.marker.setMap(map)
+              listHtml.push('<div>'+row.MEST_NM+' - '+row.ADDR+'</div>')
+              console.log(row)
+            } else {
+              row.marker.setMap(null)
+            }
+          })
+          listDom.innerHTML = listHtml.join('')
+        }, 300)
+      }
+      (async() => {
+        var lastInfoWindow = null
+        list = await (await fetch('sc.json')).json()
+        var markerSet = new Set()
+
+        // 마커를 생성합니다
+        list.forEach(row => {
+          if (!row.y) {
+            return
+          }
+          row.x = parseFloat(parseFloat(row.x).toFixed(6))
+          row.y = parseFloat(parseFloat(row.y).toFixed(6))
+          while (markerSet.has(row.y+'_'+row.x)) {
+            row.x -= 0.0001 * (Math.random() - 0.5)
+            row.y -= 0.0001 * (Math.random() - 0.5)
+          }
+          markerSet.add(row.y+'_'+row.x)
+          row.marker = new kakao.maps.Marker({
+            position: new kakao.maps.LatLng(row.y, row.x)
+          });
+
+          // 마커를 클릭했을 때 마커 위에 표시할 인포윈도우를 생성합니다
+          var iwContent = '<div style="padding:5px;">'+row.MEST_NM+'</div>', // 인포윈도우에 표출될 내용으로 HTML 문자열이나 document element가 가능합니다
+          iwRemoveable = true; // removeable 속성을 ture 로 설정하면 인포윈도우를 닫을 수 있는 x버튼이 표시됩니다
+
+          // 인포윈도우를 생성합니다
+          var infowindow = new kakao.maps.InfoWindow({
+            content : iwContent,
+            removable : iwRemoveable
+          });
+
+          kakao.maps.event.addListener(row.marker, 'click', function() {
+            if (lastInfoWindow) {
+              lastInfoWindow.close();
+            }
+            console.log(row)
+            infowindow.open(map, row.marker);
+            lastInfoWindow = infowindow;
+          });
+        })
+        document.getElementById('loading').style.display='none';
+        updateList()
+      })();
+kakao.maps.event.addListener(map, 'dragend', updateList);
+kakao.maps.event.addListener(map, 'bounds_changed', updateList);
+
+    </script>
+
+  </body>
+</html>
