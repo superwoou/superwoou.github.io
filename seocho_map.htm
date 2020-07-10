@@ -35,7 +35,7 @@
             if (!row.marker) {
               return
             }
-            if (bounds.la <= row.y && row.y <= bounds.ka && bounds.ea <= row.x && row.x <= bounds.ja) {
+            if (bounds.ka <= row.y && row.y <= bounds.ja && bounds.da <= row.x && row.x <= bounds.ia) {
               row.marker.setMap(map)
               listHtml.push('<div>'+row.MEST_NM+' - '+row.ADDR+'</div>')
               console.log(row)
